@@ -5,18 +5,42 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/nipeharefa/idrails-graphql-go/graph/generated"
 	"github.com/nipeharefa/idrails-graphql-go/graph/model"
 )
 
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented"))
+	todo := &model.Todo{}
+	todo.Text = input.Text
+	todo.Done = false
+
+	row := r.db.QueryRow("insert into todo(text, done) values ($1, $2) returning id", todo.Text, todo.Done)
+
+	err := row.Scan(&todo.ID)
+	if err != nil {
+		return todo, err
+	}
+
+	return todo, nil
 }
 
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented"))
+	todos := make([]*model.Todo, 0)
+	rows, err := r.db.Query("select * from todo order by id desc")
+	if err != nil {
+		return todos, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		todo := &model.Todo{}
+		_ = rows.Scan(&todo.ID, &todo.Text, &todo.Done)
+		todos = append(todos, todo)
+	}
+
+	return todos, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.
